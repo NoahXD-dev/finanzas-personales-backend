@@ -1,0 +1,113 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type AuthPayload {
+  accessToken: String!
+  user: User!
+}
+
+input CreateMovementInput {
+  amount: Float!
+  category: String!
+  date: String!
+  description: String!
+  type: MovementType!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type Movement {
+  amount: Float!
+  category: String!
+  createdAt: String!
+  date: String!
+  description: String!
+  id: ID!
+  type: MovementType!
+  userId: ID!
+}
+
+type MovementByCategory {
+  category: String!
+  totalExpense: Float!
+  totalIncome: Float!
+}
+
+type MovementByMonth {
+  month: String!
+  totalExpense: Float!
+  totalIncome: Float!
+}
+
+input MovementFilterInput {
+  category: String
+  fromDate: String
+  toDate: String
+  type: MovementType
+}
+
+type MovementSummary {
+  balance: Float!
+  totalExpense: Float!
+  totalIncome: Float!
+}
+
+enum MovementType {
+  expense
+  income
+}
+
+type Mutation {
+  createMovement(input: CreateMovementInput!): Movement!
+  deleteMovement(id: Int!): Movement!
+  login(input: LoginInput!): AuthPayload!
+  logout: Boolean!
+  register(input: RegisterInput!): AuthPayload!
+  setUserStatus(id: Int!, status: Boolean!): User!
+  updateMovement(id: Int!, input: UpdateMovementInput!): Movement!
+}
+
+type Query {
+  me: User!
+  movement(id: Int!): Movement!
+  movementSummary(fromDate: String!, toDate: String!): MovementSummary!
+  movements(filter: MovementFilterInput): [Movement!]!
+  movementsByCategory(fromDate: String, toDate: String): [MovementByCategory!]!
+  movementsByMonth(fromDate: String, toDate: String): [MovementByMonth!]!
+  users: [User!]!
+}
+
+input RegisterInput {
+  email: String!
+  name: String!
+  password: String!
+}
+
+input UpdateMovementInput {
+  amount: Float
+  category: String
+  date: String
+  description: String
+  type: MovementType
+}
+
+type User {
+  createdAt: String!
+  email: String!
+  id: ID!
+  inactivatedAt: String
+  inactivatedBy: Int
+  name: String!
+  role: UserRole!
+  status: Boolean!
+  updatedAt: String!
+}
+
+enum UserRole {
+  super
+  user
+}

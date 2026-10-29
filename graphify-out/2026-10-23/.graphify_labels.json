@@ -1,0 +1,17 @@
+{
+  "0": "Auth Guards and JWT",
+  "1": "Movements Service API",
+  "2": "Auth Docs Concepts",
+  "3": "Project Package Metadata",
+  "4": "Database Schema Bootstrap",
+  "5": "App Shell and Tests",
+  "6": "Movement Types Inputs",
+  "7": "TypeScript Compiler Config",
+  "8": "Dev Dependencies",
+  "9": "Stack and Modules Docs",
+  "10": "NPM Scripts",
+  "11": "Runtime Dependencies",
+  "13": "Oxlint Rules",
+  "14": "Build TypeScript Config",
+  "15": "Nest CLI Config"
+}

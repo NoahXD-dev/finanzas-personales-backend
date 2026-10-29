@@ -1,0 +1,1 @@
+ALTER TABLE `movements` ADD `deleted_at` text;
