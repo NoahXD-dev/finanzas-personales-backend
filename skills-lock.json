@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "api-designer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/api-designer/SKILL.md",
+      "computedHash": "c7e454fd9b0e2ee4e2fce2e5a4718928d0112d9c26ac530257505369b67af13d"
+    },
+    "drizzle-orm": {
+      "source": "oakoss/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/drizzle-orm/SKILL.md",
+      "computedHash": "e2cc18721f3a4eb57f5b948d9cf3e33e3f8d5a954687efc5c1dcae297b9e6913"
+    },
+    "drizzle-orm-expert": {
+      "source": "sickn33/agentic-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/drizzle-orm-expert/SKILL.md",
+      "computedHash": "0777282362a4ea9f2b29d072e0bede1e17a6d5a47247f696c40ddb424c4be22e"
+    },
+    "graphql-architect": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/graphql-architect/SKILL.md",
+      "computedHash": "90f414363d374af6647b7c758a32267746ec302093601e654774144151a6d125"
+    },
+    "nestjs-expert": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/nestjs-expert/SKILL.md",
+      "computedHash": "e41d939df4f10a6dcaddf4ceb93f81cdcf7463871ee2891b3ce610fc3eaa6d7d"
+    },
+    "secure-code-guardian": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/secure-code-guardian/SKILL.md",
+      "computedHash": "c6cc420f7dede6f5845e68a053844cb4cca7f33be08b4fd256f5259a5c2725a4"
+    }
+  }
+}
