@@ -7,6 +7,13 @@
       "skillPath": "skills/api-designer/SKILL.md",
       "computedHash": "c7e454fd9b0e2ee4e2fce2e5a4718928d0112d9c26ac530257505369b67af13d"
     },
+    "archify": {
+      "source": "archify.si",
+      "sourceUrl": "https://archify.si",
+      "sourceType": "well-known",
+      "computedHash": "66064aedd4c18651a69914c5dbb040552bc45c54ee9a49b757fe45cc1b4cc09a",
+      "wellKnownDigest": "sha256:54ba0383833e094f3262e543ffb4e3b8426b611e5c0db024a5662b4cd5320577"
+    },
     "drizzle-orm": {
       "source": "oakoss/agent-skills",
       "sourceType": "github",
