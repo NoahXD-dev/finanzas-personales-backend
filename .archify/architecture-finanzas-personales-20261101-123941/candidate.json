@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Finanzas personales",
+    "locale": "es",
+    "output": ".archify/architecture-finanzas-personales-20261101-123941/finanzas-personales.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "usuario",
+      "type": "external",
+      "label": "Usuario",
+      "sublabel": "user o super",
+      "icon": "person",
+      "pos": [36, 40],
+      "size": [132, 76]
+    },
+    {
+      "id": "angular",
+      "type": "frontend",
+      "label": "Front Angular",
+      "sublabel": "CORS :4200",
+      "pos": [216, 40],
+      "size": [164, 76]
+    },
+    {
+      "id": "apollo",
+      "type": "backend",
+      "label": "Apollo GraphQL",
+      "sublabel": "POST /graphql",
+      "pos": [460, 40],
+      "size": [176, 76]
+    },
+    {
+      "id": "jwt",
+      "type": "security",
+      "label": "JwtAuthGuard",
+      "sublabel": "Bearer y tokenVersion",
+      "tag": "401 si falla",
+      "pos": [760, 40],
+      "size": [176, 76]
+    },
+    {
+      "id": "auth",
+      "type": "backend",
+      "label": "AuthService",
+      "sublabel": "users",
+      "pos": [460, 232],
+      "size": [176, 76]
+    },
+    {
+      "id": "roles",
+      "type": "security",
+      "label": "RolesGuard",
+      "sublabel": "@Roles super",
+      "pos": [760, 232],
+      "size": [176, 76]
+    },
+    {
+      "id": "movements",
+      "type": "backend",
+      "label": "MovementsService",
+      "sublabel": "propios o todos",
+      "tag": "deletedAt null",
+      "pos": [1048, 232],
+      "size": [176, 76]
+    },
+    {
+      "id": "bcrypt",
+      "type": "security",
+      "label": "bcrypt",
+      "sublabel": "coste 10",
+      "pos": [460, 424],
+      "size": [176, 76]
+    },
+    {
+      "id": "filter",
+      "type": "backend",
+      "label": "ExceptionFilter",
+      "sublabel": "GraphQLError o JSON",
+      "pos": [760, 424],
+      "size": [176, 76]
+    },
+    {
+      "id": "drizzle",
+      "type": "backend",
+      "label": "Drizzle",
+      "sublabel": "schema único",
+      "pos": [1048, 424],
+      "size": [176, 76]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "WAL, archivo local",
+      "pos": [1048, 616],
+      "size": [176, 76]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Proceso NestJS — host no descrito",
+      "wraps": ["apollo", "jwt", "auth", "roles", "movements", "bcrypt", "filter", "drizzle", "sqlite"],
+      "pad": 18
+    },
+    {
+      "kind": "security-group",
+      "label": "Bearer obligatorio",
+      "wraps": ["jwt", "roles", "movements"],
+      "pad": 12
+    },
+    {
+      "kind": "region",
+      "label": "Archivo SQLite",
+      "wraps": ["drizzle", "sqlite"],
+      "pad": 12
+    }
+  ],
+  "connections": [
+    {
+      "id": "abre-front",
+      "from": "usuario",
+      "to": "angular",
+      "label": "abre",
+      "variant": "emphasis"
+    },
+    {
+      "id": "llama-graphql",
+      "from": "angular",
+      "to": "apollo",
+      "label": "GraphQL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "exige-bearer",
+      "from": "apollo",
+      "to": "jwt",
+      "label": "no @Public",
+      "variant": "emphasis"
+    },
+    {
+      "id": "publico",
+      "from": "apollo",
+      "to": "auth",
+      "label": "@Public",
+      "variant": "security"
+    },
+    {
+      "id": "jwt-valido",
+      "from": "jwt",
+      "to": "roles",
+      "label": "JWT válido",
+      "variant": "emphasis"
+    },
+    {
+      "id": "hacia-movimientos",
+      "from": "roles",
+      "to": "movements",
+      "label": "permitido",
+      "variant": "emphasis"
+    },
+    {
+      "id": "hacia-auth",
+      "from": "roles",
+      "to": "auth",
+      "label": "me, users",
+      "variant": "security"
+    },
+    {
+      "id": "rol-distinto",
+      "from": "roles",
+      "to": "filter",
+      "label": "rol distinto",
+      "variant": "security"
+    },
+    {
+      "id": "hashea",
+      "from": "auth",
+      "to": "bcrypt",
+      "label": "hash",
+      "variant": "security"
+    },
+    {
+      "id": "persiste",
+      "from": "movements",
+      "to": "drizzle",
+      "label": "ORM",
+      "variant": "emphasis"
+    },
+    {
+      "id": "archivo",
+      "from": "drizzle",
+      "to": "sqlite",
+      "label": "SQL WAL",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Camino principal",
+      "items": [
+        "El usuario abre Angular y llama POST /graphql para ver o cambiar movimientos.",
+        "Sin @Public hace falta Bearer. El usuario debe existir, estar activo y coincidir en tokenVersion.",
+        "Un user solo toca filas con su userId. Un super ve las de deletedAt vacío."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Acceso",
+      "items": [
+        "register y login son @Public. me, logout, users y setUserStatus van a AuthService.",
+        "users y setUserStatus exigen rol super. Otro rol responde 403.",
+        "401 también termina en GlobalExceptionFilter. Esa flecha no está dibujada: el guard ya marca el fallo."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Datos y arranque",
+      "items": [
+        "Drizzle abre SQLite en WAL. Tablas: users y movements.",
+        "bcrypt coste 10. La API no devuelve password_hash.",
+        "Si no hay super, el arranque lo crea con SUPER_EMAIL y SUPER_PASSWORD. Movimientos sin userId pasan a ese super."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "No descrito",
+      "items": [
+        "Host, HTTPS y despliegue: solo consta localhost:3001.",
+        "No hay banco, correo ni otro servicio externo.",
+        "Flutter y un motor distinto de SQLite no salen en esta descripción.",
+        "GET / responde un saludo y no entra a GraphQL."
+      ]
+    }
+  ]
+}
