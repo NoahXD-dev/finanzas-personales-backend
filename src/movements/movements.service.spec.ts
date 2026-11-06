@@ -1,11 +1,14 @@
 import {
+  BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { UserRole } from '../auth/user-role.enum.js';
+import { movementItems } from '../database/schema/movement-items.js';
 import { users } from '../database/schema/users.js';
 import { movements } from '../database/schema/movements.js';
 import {
@@ -392,6 +395,215 @@ describe('MovementsService', () => {
       expect(rows[0].month).toBe('2025-06');
       expect(rows[0].totalIncome).toBe(1000);
       expect(rows[0].totalExpense).toBe(300);
+    });
+  });
+
+  // Ítems: desglose opcional. La suma no puede pasar el amount del encabezado.
+  describe('items', () => {
+    const header = {
+      description: 'Super',
+      amount: 100,
+      type: MovementType.expense,
+      category: 'food',
+      date: '2025-08-01',
+    };
+
+    it('guarda el desglose, recorta textos y no cambia el amount', async () => {
+      const movement = await service.create(userA, {
+        ...header,
+        items: [
+          { name: '  Leche  ', price: 25, subcategory: '  lácteos  ' },
+          { name: 'Pan', price: 15, subcategory: 'panadería' },
+        ],
+      });
+
+      expect(movement.amount).toBe(100);
+      const items = await service.findItems(userA, movement.id);
+      expect(items).toEqual([
+        expect.objectContaining({
+          name: 'Leche',
+          price: 25,
+          subcategory: 'lácteos',
+          position: 0,
+        }),
+        expect.objectContaining({
+          name: 'Pan',
+          price: 15,
+          subcategory: 'panadería',
+          position: 1,
+        }),
+      ]);
+    });
+
+    it('acepta suma igual al amount, también con decimales de centavo', async () => {
+      const exact = await service.create(userA, {
+        ...header,
+        amount: 40,
+        items: [
+          { name: 'A', price: 25, subcategory: 'a' },
+          { name: 'B', price: 15, subcategory: 'b' },
+        ],
+      });
+      expect(exact.amount).toBe(40);
+
+      const cents = await service.create(userA, {
+        ...header,
+        description: 'Decimales',
+        amount: 20.3,
+        items: [
+          { name: 'A', price: 10.1, subcategory: 'a' },
+          { name: 'B', price: 10.2, subcategory: 'b' },
+        ],
+      });
+      expect(cents.amount).toBe(20.3);
+    });
+
+    it('rechaza suma mayor que amount, incluido el cruce por un centavo', async () => {
+      await expect(
+        service.create(userA, {
+          ...header,
+          amount: 30,
+          items: [
+            { name: 'A', price: 20, subcategory: 'a' },
+            { name: 'B', price: 15, subcategory: 'b' },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.create(userA, {
+          ...header,
+          amount: 20.3,
+          items: [
+            { name: 'A', price: 10.1, subcategory: 'a' },
+            { name: 'B', price: 10.21, subcategory: 'b' },
+          ],
+        }),
+      ).rejects.toThrow('Item total exceeds movement amount');
+    });
+
+    it('rechaza nombre, subcategoría o precio inválidos', async () => {
+      await expect(
+        service.create(userA, {
+          ...header,
+          items: [{ name: '   ', price: 1, subcategory: 'a' }],
+        }),
+      ).rejects.toThrow('Item name is required');
+
+      await expect(
+        service.create(userA, {
+          ...header,
+          items: [{ name: 'A', price: 1, subcategory: '   ' }],
+        }),
+      ).rejects.toThrow('Item subcategory is required');
+
+      await expect(
+        service.create(userA, {
+          ...header,
+          items: [{ name: 'A', price: 0, subcategory: 'a' }],
+        }),
+      ).rejects.toThrow('Item price must be greater than zero');
+
+      await expect(
+        service.create(userA, {
+          ...header,
+          items: [{ name: 'A'.repeat(201), price: 1, subcategory: 'a' }],
+        }),
+      ).rejects.toThrow('Item name is too long');
+    });
+
+    it('reemplaza la lista, y omitirla no la borra', async () => {
+      const movement = await service.create(userA, {
+        ...header,
+        items: [{ name: 'Leche', price: 25, subcategory: 'lácteos' }],
+      });
+
+      await service.update(userA, movement.id, {
+        description: 'Super semanal',
+      });
+      const kept = await service.findItems(userA, movement.id);
+      expect(kept).toHaveLength(1);
+      expect(kept[0].name).toBe('Leche');
+
+      await service.update(userA, movement.id, {
+        items: [{ name: 'Pan', price: 10, subcategory: 'panadería' }],
+      });
+      const replaced = await service.findItems(userA, movement.id);
+      expect(replaced).toHaveLength(1);
+      expect(replaced[0].name).toBe('Pan');
+      const current = await service.findOne(userA, movement.id);
+      expect(current.description).toBe('Super semanal');
+      expect(current.amount).toBe(100);
+    });
+
+    it('items vacío borra el desglose y permite bajar amount', async () => {
+      const movement = await service.create(userA, {
+        ...header,
+        items: [{ name: 'Leche', price: 25, subcategory: 'lácteos' }],
+      });
+
+      const updated = await service.update(userA, movement.id, {
+        items: [],
+        amount: 10,
+      });
+      expect(updated.amount).toBe(10);
+      expect(await service.findItems(userA, movement.id)).toEqual([]);
+    });
+
+    it('rechaza bajar amount por debajo de la suma guardada', async () => {
+      const movement = await service.create(userA, {
+        ...header,
+        items: [{ name: 'Leche', price: 40, subcategory: 'lácteos' }],
+      });
+
+      await expect(
+        service.update(userA, movement.id, { amount: 30 }),
+      ).rejects.toThrow('Item total exceeds movement amount');
+
+      const current = await service.findOne(userA, movement.id);
+      expect(current.amount).toBe(100);
+      expect(await service.findItems(userA, movement.id)).toHaveLength(1);
+    });
+
+    it('otro usuario no puede leer los items', async () => {
+      const movement = await service.create(userA, {
+        ...header,
+        items: [{ name: 'Leche', price: 25, subcategory: 'lácteos' }],
+      });
+
+      await expect(service.findItems(userB, movement.id)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('el resumen suma el amount del encabezado, no los precios', async () => {
+      await service.create(userA, {
+        ...header,
+        amount: 100,
+        items: [{ name: 'Leche', price: 25, subcategory: 'lácteos' }],
+      });
+
+      const summary = await service.getSummary(userA, '2025-08-01', '2025-08-31');
+      expect(summary.totalExpense).toBe(100);
+      expect(summary.balance).toBe(-100);
+    });
+
+    it('el borrado del movimiento esconde los items y conserva las filas', async () => {
+      const movement = await service.create(userA, {
+        ...header,
+        items: [{ name: 'Leche', price: 25, subcategory: 'lácteos' }],
+      });
+
+      await service.remove(userA, movement.id);
+
+      await expect(service.findItems(userA, movement.id)).rejects.toThrow(
+        NotFoundException,
+      );
+      const rows = await testDb.db
+        .select()
+        .from(movementItems)
+        .where(eq(movementItems.movementId, movement.id));
+      expect(rows).toHaveLength(1);
     });
   });
 });

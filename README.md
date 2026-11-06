@@ -114,12 +114,13 @@ El JWT lleva `sub`, `role` y `tokenVersion`. `register` guarda la contraseña co
 
 ## Modelo de datos
 
-SQLite tiene dos tablas. El schema Drizzle está en `src/database/schema/`. Las columnas de abajo usan el nombre de la base.
+SQLite tiene tres tablas. El schema Drizzle está en `src/database/schema/`. Las columnas de abajo usan el nombre de la base.
 
 ```mermaid
 erDiagram
     users |o--o{ movements : "user_id" 
     users |o--o{ users : "inactivated_by" 
+    movements ||--o{ movement_items : "movement_id"
 
     users {
         integer id PK
@@ -146,6 +147,15 @@ erDiagram
         text created_at
         text deleted_at
     }
+
+    movement_items {
+        integer id PK
+        integer movement_id FK
+        text name
+        real price
+        text subcategory
+        integer position
+    }
 ```
 
 `users` guarda la cuenta. `movements.user_id` apunta al dueño. `users.inactivated_by` apunta al usuario que inactivó esa cuenta. Las dos claves son opcionales: un movimiento puede nacer sin dueño y una cuenta activa no tiene quien la haya inactivado.
@@ -159,6 +169,10 @@ Reglas que el diagrama no muestra solas:
 - `inactivated_at` guarda el momento de la inactivación. Con la cuenta activa, `inactivated_by` e `inactivated_at` quedan vacíos.
 - `password_hash` es bcrypt. La API GraphQL no lo devuelve.
 - `movements.type` vale `income` o `expense`. `amount` es `real`.
+- `movement_items` es el desglose opcional de un movimiento. `price` es `real`, la misma unidad que `amount`. `subcategory` es texto. La categoría sigue solo en el movimiento.
+- La suma de `price`, comparada en centavos, no puede superar `amount`. El servidor no recalcula `amount`. Sin ítems, el total lo manda el cliente. Una suma menor queda como parte sin desglose.
+- En `updateMovement`, omitir `items` deja el desglose igual. `items: []` lo borra. Una lista nueva reemplaza las filas.
+- `deleteMovement` no borra `movement_items`. Esas filas dejan de verse porque el movimiento tiene `deleted_at`.
 - `date`, `created_at`, `updated_at`, `inactivated_at` y `deleted_at` son texto ISO.
 - `deleted_at` vacío significa movimiento vigente. `deleteMovement` escribe esa columna.
 - En el primer arranque, los movimientos con `user_id` vacío pasan al usuario `super`.
@@ -210,7 +224,7 @@ Cada **usuario** expone `status` (activo/inactivo), `createdAt`, `updatedAt`, y 
 
 Endpoint: `POST http://localhost:3001/graphql`
 
-Un **movimiento** tiene `description`, `amount`, `type` (`income` o `expense`), `category`, `date` y `userId`.
+Un **movimiento** tiene `description`, `amount`, `type` (`income` o `expense`), `category`, `date`, `userId` y `items`. Cada ítem tiene `name`, `price`, `subcategory` y `position`. `items` va vacío si no hay desglose.
 
 ### Queries
 
@@ -244,6 +258,11 @@ query {
     category
     date
     userId
+    items {
+      name
+      price
+      subcategory
+    }
   }
 }
 ```

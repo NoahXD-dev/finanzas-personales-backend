@@ -1,4 +1,12 @@
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import {
+  Args,
+  Int,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from '@nestjs/graphql';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { CreateMovementInput } from './create-movement.input.js';
@@ -8,6 +16,7 @@ import {
   MovementFilterInput,
   MovementSummary,
 } from './movement-summary.entity.js';
+import { MovementItem } from './movement-item.entity.js';
 import { Movement } from './movement.entity.js';
 import { MovementsService } from './movements.service.js';
 import { UpdateMovementInput } from './update-movement.input.js';
@@ -20,6 +29,14 @@ export class MovementsResolver {
   /* @param filter - The filter input
    * @returns An array of movements
    */
+  @ResolveField(() => [MovementItem])
+  items(
+    @Parent() movement: Movement,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.movementsService.findItems(user, movement.id);
+  }
+
   @Query(() => [Movement], { name: 'movements' })
   findAll(
     @CurrentUser() user: AuthenticatedUser,

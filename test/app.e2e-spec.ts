@@ -313,6 +313,84 @@ describe('App (e2e)', () => {
       expect(emails).toContain('e2e-super@test.com');
     });
 
+    it('createMovement guarda ítems dentro del amount y otro usuario no los lee', async () => {
+      const created = await gql(
+        app.getHttpServer(),
+        `mutation Create($input: CreateMovementInput!) {
+          createMovement(input: $input) {
+            id
+            amount
+            items { name price subcategory position }
+          }
+        }`,
+        {
+          input: {
+            description: 'Ticket',
+            amount: 100,
+            type: 'expense',
+            category: 'food',
+            date: '2025-08-02',
+            items: [
+              { name: 'Leche', price: 25, subcategory: 'lácteos' },
+              { name: 'Pan', price: 15, subcategory: 'panadería' },
+            ],
+          },
+        },
+        tokenA,
+      ).expect(200);
+
+      const createdBody = created.body as GqlResponse<{
+        createMovement: {
+          id: string;
+          amount: number;
+          items: {
+            name: string;
+            price: number;
+            subcategory: string;
+            position: number;
+          }[];
+        };
+      }>;
+      expect(createdBody.errors).toBeUndefined();
+      expect(createdBody.data?.createMovement.amount).toBe(100);
+      expect(createdBody.data?.createMovement.items).toEqual([
+        { name: 'Leche', price: 25, subcategory: 'lácteos', position: 0 },
+        { name: 'Pan', price: 15, subcategory: 'panadería', position: 1 },
+      ]);
+
+      const movementId = Number(createdBody.data!.createMovement.id);
+      const denied = await gql(
+        app.getHttpServer(),
+        `query One($id: Int!) { movement(id: $id) { id } }`,
+        { id: movementId },
+        tokenB,
+      ).expect(200);
+      expect(
+        (denied.body as GqlResponse<unknown>).errors?.length,
+      ).toBeGreaterThan(0);
+
+      const exceed = await gql(
+        app.getHttpServer(),
+        `mutation Create($input: CreateMovementInput!) {
+          createMovement(input: $input) { id }
+        }`,
+        {
+          input: {
+            description: 'De más',
+            amount: 10,
+            type: 'expense',
+            category: 'food',
+            date: '2025-08-03',
+            items: [{ name: 'Carne', price: 11, subcategory: 'carnes' }],
+          },
+        },
+        tokenA,
+      ).expect(200);
+      expect(
+        (exceed.body as GqlResponse<unknown>).errors?.[0]?.message,
+      ).toContain('Item total exceeds movement amount');
+    });
+
     it('tras inactivar un usuario, login de esa cuenta falla', async () => {
       const inactive = await gql(
         app.getHttpServer(),

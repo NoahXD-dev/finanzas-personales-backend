@@ -10,8 +10,15 @@ import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { DRIZZLE } from '../database/database.constants.js';
 import * as schema from '../database/schema/index.js';
+import { movementItems } from '../database/schema/movement-items.js';
 import { movements } from '../database/schema/movements.js';
 import { CreateMovementInput } from './create-movement.input.js';
+import { MovementItem } from './movement-item.entity.js';
+import {
+  assertItemsWithinAmount,
+  normalizeMovementItems,
+  type NormalizedMovementItem,
+} from './movement-item.rules.js';
 import {
   MovementByCategory,
   MovementByMonth,
@@ -44,6 +51,17 @@ export class MovementsService {
       date: row.date,
       createdAt: row.createdAt,
       userId: row.userId,
+    };
+  }
+
+  private toMovementItem(row: typeof movementItems.$inferSelect): MovementItem {
+    return {
+      id: row.id,
+      movementId: row.movementId,
+      name: row.name,
+      price: row.price,
+      subcategory: row.subcategory,
+      position: row.position,
     };
   }
 
@@ -142,18 +160,31 @@ export class MovementsService {
     user: AuthenticatedUser,
     input: CreateMovementInput,
   ): Promise<Movement> {
-    const [row] = await this.db
-      .insert(movements)
-      .values({
-        userId: user.id,
-        description: input.description,
-        amount: input.amount,
-        type: input.type,
-        category: input.category,
-        date: input.date,
-        createdAt: new Date().toISOString(),
-      })
-      .returning();
+    const normalizedItems =
+      input.items == null ? [] : normalizeMovementItems(input.items);
+    if (normalizedItems.length > 0) {
+      assertItemsWithinAmount(
+        normalizedItems.map((item) => item.price),
+        input.amount,
+      );
+    }
+    const row = this.db.transaction((tx) => {
+      const [created] = tx
+        .insert(movements)
+        .values({
+          userId: user.id,
+          description: input.description,
+          amount: input.amount,
+          type: input.type,
+          category: input.category,
+          date: input.date,
+          createdAt: new Date().toISOString(),
+        })
+        .returning()
+        .all();
+      this.insertItems(tx, created.id, normalizedItems);
+      return created;
+    });
     return this.toMovement(row);
   }
 
@@ -167,10 +198,43 @@ export class MovementsService {
     id: number,
     input: UpdateMovementInput,
   ): Promise<Movement> {
-    await this.findOne(user, id);
-    const [row] = await this.db
-      .update(movements)
-      .set({
+    const normalizedItems =
+      input.items == null ? undefined : normalizeMovementItems(input.items);
+    const row = this.db.transaction((tx) => {
+      const [existing] = tx
+        .select()
+        .from(movements)
+        .where(and(eq(movements.id, id), isNull(movements.deletedAt)))
+        .all();
+      if (!existing) {
+        throw new NotFoundException(`Movement with id ${id} not found`);
+      }
+      this.assertCanAccess(existing, user);
+
+      const nextAmount =
+        input.amount !== undefined ? input.amount : existing.amount;
+      if (normalizedItems !== undefined) {
+        if (normalizedItems.length > 0) {
+          assertItemsWithinAmount(
+            normalizedItems.map((item) => item.price),
+            nextAmount,
+          );
+        }
+      } else if (input.amount !== undefined) {
+        const currentItems = tx
+          .select({ price: movementItems.price })
+          .from(movementItems)
+          .where(eq(movementItems.movementId, id))
+          .all();
+        if (currentItems.length > 0) {
+          assertItemsWithinAmount(
+            currentItems.map((item) => item.price),
+            nextAmount,
+          );
+        }
+      }
+
+      const patch = {
         ...(input.description !== undefined && {
           description: input.description,
         }),
@@ -178,10 +242,64 @@ export class MovementsService {
         ...(input.type !== undefined && { type: input.type }),
         ...(input.category !== undefined && { category: input.category }),
         ...(input.date !== undefined && { date: input.date }),
-      })
-      .where(eq(movements.id, id))
-      .returning();
+      };
+      let saved = existing;
+      if (Object.keys(patch).length > 0) {
+        const [updated] = tx
+          .update(movements)
+          .set(patch)
+          .where(and(eq(movements.id, id), isNull(movements.deletedAt)))
+          .returning()
+          .all();
+        saved = updated;
+      }
+      if (normalizedItems !== undefined) {
+        tx.delete(movementItems)
+          .where(eq(movementItems.movementId, id))
+          .run();
+        this.insertItems(tx, id, normalizedItems);
+      }
+      return saved;
+    });
     return this.toMovement(row);
+  }
+
+  /* Finds the items of a movement the user can access */
+  /* @param movementId - The id of the movement
+   * @returns The items ordered by position
+   */
+  async findItems(
+    user: AuthenticatedUser,
+    movementId: number,
+  ): Promise<MovementItem[]> {
+    await this.findOne(user, movementId);
+    const rows = await this.db
+      .select()
+      .from(movementItems)
+      .where(eq(movementItems.movementId, movementId))
+      .orderBy(movementItems.position, movementItems.id);
+    return rows.map((row) => this.toMovementItem(row));
+  }
+
+  private insertItems(
+    tx: Parameters<Parameters<DrizzleDB['transaction']>[0]>[0],
+    movementId: number,
+    items: NormalizedMovementItem[],
+  ): void {
+    if (items.length === 0) {
+      return;
+    }
+    tx.insert(movementItems)
+      .values(
+        items.map((item) => ({
+          movementId,
+          name: item.name,
+          price: item.price,
+          subcategory: item.subcategory,
+          position: item.position,
+        })),
+      )
+      .run();
   }
 
   /* Removes a movement */
