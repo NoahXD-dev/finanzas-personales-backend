@@ -1,4 +1,5 @@
 import { Field, Float, ID, ObjectType, registerEnumType } from '@nestjs/graphql';
+import { MovementItem } from './movement-item.entity.js';
 
 export enum MovementType {
   income = 'income',
@@ -34,4 +35,7 @@ export class Movement {
 
   @Field(() => ID)
   userId!: number;
+
+  @Field(() => [MovementItem])
+  items?: MovementItem[];
 }

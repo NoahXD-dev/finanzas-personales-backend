@@ -12,6 +12,7 @@ input CreateMovementInput {
   category: String!
   date: String!
   description: String!
+  items: [MovementItemInput!]
   type: MovementType!
 }
 
@@ -27,6 +28,7 @@ type Movement {
   date: String!
   description: String!
   id: ID!
+  items: [MovementItem!]!
   type: MovementType!
   userId: ID!
 }
@@ -48,6 +50,21 @@ input MovementFilterInput {
   fromDate: String
   toDate: String
   type: MovementType
+}
+
+type MovementItem {
+  id: ID!
+  movementId: ID!
+  name: String!
+  position: Int!
+  price: Float!
+  subcategory: String!
+}
+
+input MovementItemInput {
+  name: String!
+  price: Float!
+  subcategory: String!
 }
 
 type MovementSummary {
@@ -92,6 +109,7 @@ input UpdateMovementInput {
   category: String
   date: String
   description: String
+  items: [MovementItemInput!]
   type: MovementType
 }
 
