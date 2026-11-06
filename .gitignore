@@ -74,3 +74,5 @@ graphify-out/*/*
 .archify/**/*.delivery.json
 .archify/**/*.finalize.json
 .archify/**/*.finalize-summary.json
+
+tsconfig.build.tsbuildinfo
