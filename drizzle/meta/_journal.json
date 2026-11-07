@@ -8,6 +8,20 @@
       "when": 1794013616373,
       "tag": "0000_initial_postgres",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794016323727,
+      "tag": "0001_movements_amount_decimal",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794016578597,
+      "tag": "0002_movement_items_price_decimal",
+      "breakpoints": true
     }
   ]
 }
