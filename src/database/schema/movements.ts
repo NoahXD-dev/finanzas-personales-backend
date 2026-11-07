@@ -1,11 +1,11 @@
-import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { doublePrecision, integer, pgTable, text } from 'drizzle-orm/pg-core';
 import { users } from './users.js';
 
-export const movements = sqliteTable('movements', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const movements = pgTable('movements', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   userId: integer('user_id').references(() => users.id),
   description: text('description').notNull(),
-  amount: real('amount').notNull(),
+  amount: doublePrecision('amount').notNull(),
   type: text('type', { enum: ['income', 'expense'] }).notNull(),
   category: text('category').notNull(),
   date: text('date').notNull(),

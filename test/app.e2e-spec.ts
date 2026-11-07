@@ -7,8 +7,8 @@ import { DRIZZLE } from '../src/database/database.constants.js';
 import {
   closeTestDb,
   createTestDb,
-  type TestSqlite,
-} from './helpers/sqlite.js';
+  type TestDb,
+} from './helpers/pglite.js';
 
 type GqlResponse<T> = {
   data?: T;
@@ -33,15 +33,18 @@ function gql(
 // Prueba HTTP raíz y flujos GraphQL de auth y movimientos con base aislada.
 describe('App (e2e)', () => {
   let app: INestApplication<App>;
-  let testDb: TestSqlite;
+  let testDb: TestDb;
   let superToken: string;
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'e2e-test-jwt-secret';
     process.env.SUPER_EMAIL = 'e2e-super@test.com';
     process.env.SUPER_PASSWORD = 'e2e-super-password';
+    process.env.DATABASE_URL =
+      process.env.DATABASE_URL ??
+      'postgresql://postgres:postgres@127.0.0.1:5432/finanzas_e2e';
 
-    testDb = createTestDb();
+    testDb = await createTestDb();
 
     const { AppModule } = await import('../src/app.module.js');
 
@@ -76,7 +79,7 @@ describe('App (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
-    closeTestDb(testDb.sqlite);
+    await closeTestDb(testDb.client);
   });
 
   // Endpoint REST de bienvenida de Nest (no GraphQL).

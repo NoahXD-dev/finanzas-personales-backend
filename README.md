@@ -2,7 +2,7 @@
 
 API GraphQL para registrar ingresos y gastos, consultar movimientos y obtener resúmenes por periodo, categoría y mes. Incluye autenticación JWT, registro de usuarios y roles (`user` / `super`).
 
-Stack: **NestJS**, **Apollo GraphQL**, **Drizzle ORM**, **SQLite**, **JWT** y **bcrypt**.
+Stack: **NestJS**, **Apollo GraphQL**, **Drizzle ORM**, **PostgreSQL**, **JWT** y **bcrypt**.
 
 ## Requisitos
 
@@ -23,7 +23,7 @@ Variables de entorno (ver `.env.example`):
 | Variable | Default | Descripción |
 | --- | --- | --- |
 | `PORT` | `3001` | Puerto HTTP |
-| `DATABASE_URL` | `file:./data/sqlite.db` | Ruta de SQLite |
+| `DATABASE_URL` | — | Cadena de conexión PostgreSQL (obligatorio) |
 | `CORS_ORIGIN` | `http://localhost:4200` | Origen permitido del front (Angular) |
 | `JWT_SECRET` | — | Secreto para firmar tokens (obligatorio) |
 | `JWT_EXPIRES_IN` | `7d` | Expiración del access token |
@@ -56,7 +56,7 @@ flowchart TD
   main["main.ts"] --> cors["CORS: CORS_ORIGIN o http://localhost:4200"]
   cors --> listen["listen en PORT o 3001"]
   listen --> app["AppModule"]
-  app --> db["DatabaseModule: SQLite WAL y Drizzle"]
+  app --> db["DatabaseModule: PostgreSQL pool y Drizzle"]
   db --> boot["DatabaseBootstrapService"]
   boot --> super["si no hay role super, lo crea con SUPER_EMAIL y SUPER_PASSWORD"]
   super --> duenos["movimientos sin userId quedan del super"]
@@ -64,7 +64,7 @@ flowchart TD
   app --> schema["schema GraphQL en src/schema.gql"]
 ```
 
-`main.ts` crea la app Nest, habilita CORS y escucha en `PORT`. `DatabaseModule` abre SQLite en modo WAL y expone el cliente Drizzle. Al iniciar, `DatabaseBootstrapService` crea el usuario `super` si no existe y asigna a ese usuario los movimientos que no tienen `userId`. `AuthModule` registra `JwtAuthGuard` y `RolesGuard` como guards globales. El schema GraphQL se escribe en `src/schema.gql`. En tests (`VITEST`) se escribe en un archivo temporal.
+`main.ts` crea la app Nest, habilita CORS y escucha en `PORT`. `DatabaseModule` abre un pool `pg` contra `DATABASE_URL` y expone el cliente Drizzle. Al iniciar, `DatabaseBootstrapService` crea el usuario `super` si no existe y asigna a ese usuario los movimientos que no tienen `userId`. `AuthModule` registra `JwtAuthGuard` y `RolesGuard` como guards globales. El schema GraphQL se escribe en `src/schema.gql`. En tests (`VITEST`) se escribe en un archivo temporal.
 
 ### Petición
 
@@ -114,7 +114,7 @@ El JWT lleva `sub`, `role` y `tokenVersion`. `register` guarda la contraseña co
 
 ## Modelo de datos
 
-SQLite tiene tres tablas. El schema Drizzle está en `src/database/schema/`. Las columnas de abajo usan el nombre de la base.
+PostgreSQL tiene tres tablas. El schema Drizzle está en `src/database/schema/`. Las columnas de abajo usan el nombre de la base.
 
 ```mermaid
 erDiagram
@@ -129,7 +129,7 @@ erDiagram
         text password_hash
         text role
         integer token_version
-        integer status
+        boolean status
         integer inactivated_by FK
         text inactivated_at
         text created_at
@@ -140,7 +140,7 @@ erDiagram
         integer id PK
         integer user_id FK
         text description
-        real amount
+        double amount
         text type
         text category
         text date
@@ -152,7 +152,7 @@ erDiagram
         integer id PK
         integer movement_id FK
         text name
-        real price
+        double price
         text subcategory
         integer position
     }
@@ -164,12 +164,12 @@ Reglas que el diagrama no muestra solas:
 
 - `email` es único. El índice `users_single_super_idx` permite una sola fila con `role = 'super'`.
 - `role` vale `user` o `super`. El default es `user`.
-- `status` es un entero booleano. `1` es activo. El default es activo.
+- `status` es boolean. El default es activo (`true`).
 - `token_version` empieza en `0`. `logout` e inactivar la cuenta lo incrementan.
 - `inactivated_at` guarda el momento de la inactivación. Con la cuenta activa, `inactivated_by` e `inactivated_at` quedan vacíos.
 - `password_hash` es bcrypt. La API GraphQL no lo devuelve.
-- `movements.type` vale `income` o `expense`. `amount` es `real`.
-- `movement_items` es el desglose opcional de un movimiento. `price` es `real`, la misma unidad que `amount`. `subcategory` es texto. La categoría sigue solo en el movimiento.
+- `movements.type` vale `income` o `expense`. `amount` es `double precision`.
+- `movement_items` es el desglose opcional de un movimiento. `price` es `double precision`, la misma unidad que `amount`. `subcategory` es texto. La categoría sigue solo en el movimiento.
 - La suma de `price`, comparada en centavos, no puede superar `amount`. El servidor no recalcula `amount`. Sin ítems, el total lo manda el cliente. Una suma menor queda como parte sin desglose.
 - En `updateMovement`, omitir `items` deja el desglose igual. `items: []` lo borra. Una lista nueva reemplaza las filas.
 - `deleteMovement` no borra `movement_items`. Esas filas dejan de verse porque el movimiento tiene `deleted_at`.
@@ -215,7 +215,7 @@ Cada **usuario** expone `status` (activo/inactivo), `createdAt`, `updatedAt`, y 
 | `npm run start:dev` | Arranque en watch |
 | `npm run db:generate` | Generar migraciones Drizzle |
 | `npm run db:migrate` | Aplicar migraciones |
-| `npm run db:push` | Empujar el schema a SQLite (dev) |
+| `npm run db:push` | Empujar el schema a Postgres (solo dev) |
 | `npm run test` | Tests unitarios (Vitest) |
 | `npm run test:e2e` | Tests e2e |
 | `npm run lint` | Lint con oxlint |
@@ -276,6 +276,6 @@ src/
   main.ts                 # bootstrap, CORS y puerto
   app.module.ts           # GraphQL + módulos
   auth/                   # JWT, registro, login, roles
-  database/               # Drizzle + SQLite + bootstrap super
+  database/               # Drizzle + PostgreSQL + bootstrap super
   movements/              # entidad, resolver y servicio
 ```

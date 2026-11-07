@@ -9,9 +9,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
-import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { DRIZZLE } from '../database/database.constants.js';
-import * as schema from '../database/schema/index.js';
+import type { DrizzleDB } from '../database/drizzle-db.type.js';
 import { users } from '../database/schema/users.js';
 import type { AuthenticatedUser, JwtPayload } from './auth.types.js';
 import { LoginInput } from './login.input.js';
@@ -19,8 +18,6 @@ import { RegisterInput } from './register.input.js';
 import { UserRole } from './user-role.enum.js';
 import { User } from './user.entity.js';
 import { AuthPayload } from './auth-payload.entity.js';
-
-type DrizzleDB = BetterSQLite3Database<typeof schema>;
 
 const INVALID_CREDENTIALS = 'Invalid email or password';
 const INACTIVE_ACCOUNT = 'Account is inactive';

@@ -1,27 +1,28 @@
 import {
-  type AnySQLiteColumn,
+  type AnyPgColumn,
+  boolean,
   integer,
-  sqliteTable,
+  pgTable,
   text,
   uniqueIndex,
-} from 'drizzle-orm/sqlite-core';
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const userRoles = ['user', 'super'] as const;
 export type UserRole = (typeof userRoles)[number];
 
-export const users = sqliteTable(
+export const users = pgTable(
   'users',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
     name: text('name').notNull(),
     email: text('email').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
     role: text('role', { enum: userRoles }).notNull().default('user'),
     tokenVersion: integer('token_version').notNull().default(0),
-    status: integer('status', { mode: 'boolean' }).notNull().default(true),
+    status: boolean('status').notNull().default(true),
     inactivatedBy: integer('inactivated_by').references(
-      (): AnySQLiteColumn => users.id,
+      (): AnyPgColumn => users.id,
     ),
     inactivatedAt: text('inactivated_at'),
     createdAt: text('created_at').notNull(),

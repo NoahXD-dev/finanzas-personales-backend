@@ -12,15 +12,15 @@ import { users } from '../database/schema/users.js';
 import {
   closeTestDb,
   createTestDb,
-  type TestSqlite,
-} from '../../test/helpers/sqlite.js';
+  type TestDb,
+} from '../../test/helpers/pglite.js';
 import { AuthService } from './auth.service.js';
 import { UserRole } from './user-role.enum.js';
 
 const JWT_SECRET = 'test-jwt-secret';
 
 async function insertUser(
-  db: TestSqlite['db'],
+  db: TestDb['db'],
   data: {
     name: string;
     email: string;
@@ -50,18 +50,18 @@ async function insertUser(
 
 // Prueba registro, login, logout, estado de usuarios y validación de JWT.
 describe('AuthService', () => {
-  let testDb: TestSqlite;
+  let testDb: TestDb;
   let authService: AuthService;
   let jwtService: JwtService;
 
-  beforeEach(() => {
-    testDb = createTestDb();
+  beforeEach(async () => {
+    testDb = await createTestDb();
     jwtService = new JwtService({ secret: JWT_SECRET });
     authService = new AuthService(testDb.db, jwtService);
   });
 
-  afterEach(() => {
-    closeTestDb(testDb.sqlite);
+  afterEach(async () => {
+    await closeTestDb(testDb.client);
   });
 
   // register: datos normalizados, rol user y token en la respuesta.

@@ -1,13 +1,10 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { eq, isNull } from 'drizzle-orm';
-import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import bcrypt from 'bcrypt';
 import { DRIZZLE } from './database.constants.js';
-import * as schema from './schema/index.js';
+import type { DrizzleDB } from './drizzle-db.type.js';
 import { movements } from './schema/movements.js';
 import { users } from './schema/users.js';
-
-type DrizzleDB = BetterSQLite3Database<typeof schema>;
 
 @Injectable()
 export class DatabaseBootstrapService implements OnModuleInit {
