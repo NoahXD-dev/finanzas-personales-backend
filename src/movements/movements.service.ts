@@ -7,9 +7,8 @@ import {
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { UserRole } from '../auth/user-role.enum.js';
 import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
-import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { DRIZZLE } from '../database/database.constants.js';
-import * as schema from '../database/schema/index.js';
+import type { DrizzleDB } from '../database/drizzle-db.type.js';
 import { movementItems } from '../database/schema/movement-items.js';
 import { movements } from '../database/schema/movements.js';
 import { CreateMovementInput } from './create-movement.input.js';
@@ -27,8 +26,6 @@ import {
 } from './movement-summary.entity.js';
 import { Movement, MovementType } from './movement.entity.js';
 import { UpdateMovementInput } from './update-movement.input.js';
-
-type DrizzleDB = BetterSQLite3Database<typeof schema>;
 
 @Injectable()
 export class MovementsService {
@@ -168,8 +165,8 @@ export class MovementsService {
         input.amount,
       );
     }
-    const row = this.db.transaction((tx) => {
-      const [created] = tx
+    const row = await this.db.transaction(async (tx) => {
+      const [created] = await tx
         .insert(movements)
         .values({
           userId: user.id,
@@ -180,9 +177,8 @@ export class MovementsService {
           date: input.date,
           createdAt: new Date().toISOString(),
         })
-        .returning()
-        .all();
-      this.insertItems(tx, created.id, normalizedItems);
+        .returning();
+      await this.insertItems(tx, created.id, normalizedItems);
       return created;
     });
     return this.toMovement(row);
@@ -200,12 +196,11 @@ export class MovementsService {
   ): Promise<Movement> {
     const normalizedItems =
       input.items == null ? undefined : normalizeMovementItems(input.items);
-    const row = this.db.transaction((tx) => {
-      const [existing] = tx
+    const row = await this.db.transaction(async (tx) => {
+      const [existing] = await tx
         .select()
         .from(movements)
-        .where(and(eq(movements.id, id), isNull(movements.deletedAt)))
-        .all();
+        .where(and(eq(movements.id, id), isNull(movements.deletedAt)));
       if (!existing) {
         throw new NotFoundException(`Movement with id ${id} not found`);
       }
@@ -221,11 +216,10 @@ export class MovementsService {
           );
         }
       } else if (input.amount !== undefined) {
-        const currentItems = tx
+        const currentItems = await tx
           .select({ price: movementItems.price })
           .from(movementItems)
-          .where(eq(movementItems.movementId, id))
-          .all();
+          .where(eq(movementItems.movementId, id));
         if (currentItems.length > 0) {
           assertItemsWithinAmount(
             currentItems.map((item) => item.price),
@@ -245,19 +239,18 @@ export class MovementsService {
       };
       let saved = existing;
       if (Object.keys(patch).length > 0) {
-        const [updated] = tx
+        const [updated] = await tx
           .update(movements)
           .set(patch)
           .where(and(eq(movements.id, id), isNull(movements.deletedAt)))
-          .returning()
-          .all();
+          .returning();
         saved = updated;
       }
       if (normalizedItems !== undefined) {
-        tx.delete(movementItems)
-          .where(eq(movementItems.movementId, id))
-          .run();
-        this.insertItems(tx, id, normalizedItems);
+        await tx
+          .delete(movementItems)
+          .where(eq(movementItems.movementId, id));
+        await this.insertItems(tx, id, normalizedItems);
       }
       return saved;
     });
@@ -281,25 +274,23 @@ export class MovementsService {
     return rows.map((row) => this.toMovementItem(row));
   }
 
-  private insertItems(
+  private async insertItems(
     tx: Parameters<Parameters<DrizzleDB['transaction']>[0]>[0],
     movementId: number,
     items: NormalizedMovementItem[],
-  ): void {
+  ): Promise<void> {
     if (items.length === 0) {
       return;
     }
-    tx.insert(movementItems)
-      .values(
-        items.map((item) => ({
-          movementId,
-          name: item.name,
-          price: item.price,
-          subcategory: item.subcategory,
-          position: item.position,
-        })),
-      )
-      .run();
+    await tx.insert(movementItems).values(
+      items.map((item) => ({
+        movementId,
+        name: item.name,
+        price: item.price,
+        subcategory: item.subcategory,
+        position: item.position,
+      })),
+    );
   }
 
   /* Removes a movement */

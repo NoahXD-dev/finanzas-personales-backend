@@ -1,6 +1,6 @@
 {
   "name": "finanzas-personales-backend",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "",
   "author": "",
   "private": true,
@@ -21,7 +21,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "mkdir -p data && drizzle-kit migrate",
+    "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -34,7 +34,7 @@
     "@nestjs/jwt": "^12.0.3",
     "@nestjs/platform-express": "^12.0.1",
     "bcrypt": "^6.0.0",
-    "better-sqlite3": "^13.0.3",
+    "pg": "^8.16.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "dotenv": "^16.6.1",
@@ -49,7 +49,8 @@
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
     "@types/bcrypt": "^6.0.0",
-    "@types/better-sqlite3": "^9.6.0",
+    "@electric-sql/pglite": "^0.3.11",
+    "@types/pg": "^8.15.5",
     "@types/express": "^5.0.0",
     "@types/node": "^26.6.5",
     "@types/supertest": "^7.0.0",

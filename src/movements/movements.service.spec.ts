@@ -14,13 +14,13 @@ import { movements } from '../database/schema/movements.js';
 import {
   closeTestDb,
   createTestDb,
-  type TestSqlite,
-} from '../../test/helpers/sqlite.js';
+  type TestDb,
+} from '../../test/helpers/pglite.js';
 import { MovementType } from './movement.entity.js';
 import { MovementsService } from './movements.service.js';
 
 async function insertUser(
-  db: TestSqlite['db'],
+  db: TestDb['db'],
   data: {
     name: string;
     email: string;
@@ -61,7 +61,7 @@ function toAuthUser(row: typeof users.$inferSelect): AuthenticatedUser {
 }
 
 async function insertMovement(
-  db: TestSqlite['db'],
+  db: TestDb['db'],
   data: {
     userId: number;
     description: string;
@@ -90,14 +90,14 @@ async function insertMovement(
 
 // Prueba CRUD de movimientos, aislamiento por usuario, filtros y agregados.
 describe('MovementsService', () => {
-  let testDb: TestSqlite;
+  let testDb: TestDb;
   let service: MovementsService;
   let userA: AuthenticatedUser;
   let userB: AuthenticatedUser;
   let superUser: AuthenticatedUser;
 
   beforeEach(async () => {
-    testDb = createTestDb();
+    testDb = await createTestDb();
     service = new MovementsService(testDb.db);
 
     const rowA = await insertUser(testDb.db, {
@@ -119,8 +119,8 @@ describe('MovementsService', () => {
     superUser = toAuthUser(rowSuper);
   });
 
-  afterEach(() => {
-    closeTestDb(testDb.sqlite);
+  afterEach(async () => {
+    await closeTestDb(testDb.client);
   });
 
   // create: el movimiento queda asociado al usuario autenticado.

@@ -6,30 +6,30 @@ import { users } from './schema/users.js';
 import {
   closeTestDb,
   createTestDb,
-  type TestSqlite,
-} from '../../test/helpers/sqlite.js';
+  type TestDb,
+} from '../../test/helpers/pglite.js';
 import { DatabaseBootstrapService } from './database-bootstrap.service.js';
 
 // Prueba creación del super al arranque y backfill de movimientos sin dueño.
 describe('DatabaseBootstrapService', () => {
-  let testDb: TestSqlite;
+  let testDb: TestDb;
   let service: DatabaseBootstrapService;
   const envBackup = {
     SUPER_EMAIL: process.env.SUPER_EMAIL,
     SUPER_PASSWORD: process.env.SUPER_PASSWORD,
   };
 
-  beforeEach(() => {
-    testDb = createTestDb();
+  beforeEach(async () => {
+    testDb = await createTestDb();
     service = new DatabaseBootstrapService(testDb.db);
     process.env.SUPER_EMAIL = 'bootstrap-super@test.com';
     process.env.SUPER_PASSWORD = 'super-pass-123';
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     process.env.SUPER_EMAIL = envBackup.SUPER_EMAIL;
     process.env.SUPER_PASSWORD = envBackup.SUPER_PASSWORD;
-    closeTestDb(testDb.sqlite);
+    await closeTestDb(testDb.client);
   });
 
   it('crea el usuario super si no existe ninguno en la base', async () => {

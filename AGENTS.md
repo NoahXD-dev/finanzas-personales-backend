@@ -7,7 +7,7 @@ API GraphQL para una app de finanzas personales. Los clientes son un frontend An
 - Lenguaje: TypeScript (modo estricto)
 - Framework: NestJS
 - API: GraphQL
-- Base de datos: SQLite (temporal) con Drizzle ORM. Se evalúa migrar a PostgreSQL o MySQL, así que no uses APIs exclusivas de SQLite sin dejarlo anotado.
+- Base de datos: PostgreSQL con Drizzle ORM (`pg`). Los tests usan PGlite en memoria.
 - Seguridad: JWT para autenticación, bcrypt para contraseñas
 - Diagramas: Mermaid
 

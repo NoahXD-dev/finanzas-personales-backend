@@ -1,13 +1,10 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { eq, isNull } from 'drizzle-orm';
-import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import { eq, isNull, sql } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { DRIZZLE } from './database.constants.js';
-import * as schema from './schema/index.js';
+import type { DrizzleDB } from './drizzle-db.type.js';
 import { movements } from './schema/movements.js';
 import { users } from './schema/users.js';
-
-type DrizzleDB = BetterSQLite3Database<typeof schema>;
 
 @Injectable()
 export class DatabaseBootstrapService implements OnModuleInit {
@@ -16,8 +13,14 @@ export class DatabaseBootstrapService implements OnModuleInit {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async onModuleInit(): Promise<void> {
+    await this.verifyConnection();
     const superUser = await this.ensureSuperUser();
     await this.backfillMovementOwners(superUser.id);
+  }
+
+  private async verifyConnection(): Promise<void> {
+    await this.db.execute(sql`SELECT 1`);
+    this.logger.log('Conexión con PostgreSQL establecida');
   }
 
   private async ensureSuperUser(): Promise<typeof users.$inferSelect> {
