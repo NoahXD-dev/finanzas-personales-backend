@@ -140,7 +140,7 @@ erDiagram
         integer id PK
         integer user_id FK
         text description
-        double amount
+        decimal amount
         text type
         text category
         text date
@@ -152,7 +152,7 @@ erDiagram
         integer id PK
         integer movement_id FK
         text name
-        double price
+        decimal price
         text subcategory
         integer position
     }
@@ -168,8 +168,8 @@ Reglas que el diagrama no muestra solas:
 - `token_version` empieza en `0`. `logout` e inactivar la cuenta lo incrementan.
 - `inactivated_at` guarda el momento de la inactivación. Con la cuenta activa, `inactivated_by` e `inactivated_at` quedan vacíos.
 - `password_hash` es bcrypt. La API GraphQL no lo devuelve.
-- `movements.type` vale `income` o `expense`. `amount` es `double precision`.
-- `movement_items` es el desglose opcional de un movimiento. `price` es `double precision`, la misma unidad que `amount`. `subcategory` es texto. La categoría sigue solo en el movimiento.
+- `movements.type` vale `income` o `expense`. `amount` es `numeric(19,4)` (decimal).
+- `movement_items` es el desglose opcional de un movimiento. `price` es `numeric(19,4)` (decimal), la misma unidad que `amount`. `subcategory` es texto. La categoría sigue solo en el movimiento.
 - La suma de `price`, comparada en centavos, no puede superar `amount`. El servidor no recalcula `amount`. Sin ítems, el total lo manda el cliente. Una suma menor queda como parte sin desglose.
 - En `updateMovement`, omitir `items` deja el desglose igual. `items: []` lo borra. Una lista nueva reemplaza las filas.
 - `deleteMovement` no borra `movement_items`. Esas filas dejan de verse porque el movimiento tiene `deleted_at`.

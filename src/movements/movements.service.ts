@@ -327,14 +327,14 @@ export class MovementsService {
     const where = and(...conditions);
     const [result] = await this.db
       .select({
-        totalIncome: sql<number>`coalesce(sum(case when ${movements.type} = 'income' then ${movements.amount} else 0 end), 0)`,
-        totalExpense: sql<number>`coalesce(sum(case when ${movements.type} = 'expense' then ${movements.amount} else 0 end), 0)`,
+        totalIncome: sql<number>`coalesce(sum(case when ${movements.type} = 'income' then ${movements.amount} else 0 end)::float8, 0)`,
+        totalExpense: sql<number>`coalesce(sum(case when ${movements.type} = 'expense' then ${movements.amount} else 0 end)::float8, 0)`,
       })
       .from(movements)
       .where(where);
 
-    const totalIncome = result?.totalIncome ?? 0;
-    const totalExpense = result?.totalExpense ?? 0;
+    const totalIncome = Number(result?.totalIncome ?? 0);
+    const totalExpense = Number(result?.totalExpense ?? 0);
 
     return {
       totalIncome,
@@ -357,15 +357,19 @@ export class MovementsService {
     const rows = await this.db
       .select({
         category: movements.category,
-        totalIncome: sql<number>`coalesce(sum(case when ${movements.type} = 'income' then ${movements.amount} else 0 end), 0)`,
-        totalExpense: sql<number>`coalesce(sum(case when ${movements.type} = 'expense' then ${movements.amount} else 0 end), 0)`,
+        totalIncome: sql<number>`coalesce(sum(case when ${movements.type} = 'income' then ${movements.amount} else 0 end)::float8, 0)`,
+        totalExpense: sql<number>`coalesce(sum(case when ${movements.type} = 'expense' then ${movements.amount} else 0 end)::float8, 0)`,
       })
       .from(movements)
       .where(where)
       .groupBy(movements.category)
       .orderBy(movements.category);
 
-    return rows;
+    return rows.map((row) => ({
+      category: row.category,
+      totalIncome: Number(row.totalIncome),
+      totalExpense: Number(row.totalExpense),
+    }));
   }
 
   /* Gets the movements by month */
@@ -383,14 +387,18 @@ export class MovementsService {
     const rows = await this.db
       .select({
         month: monthExpr,
-        totalIncome: sql<number>`coalesce(sum(case when ${movements.type} = 'income' then ${movements.amount} else 0 end), 0)`,
-        totalExpense: sql<number>`coalesce(sum(case when ${movements.type} = 'expense' then ${movements.amount} else 0 end), 0)`,
+        totalIncome: sql<number>`coalesce(sum(case when ${movements.type} = 'income' then ${movements.amount} else 0 end)::float8, 0)`,
+        totalExpense: sql<number>`coalesce(sum(case when ${movements.type} = 'expense' then ${movements.amount} else 0 end)::float8, 0)`,
       })
       .from(movements)
       .where(where)
       .groupBy(monthExpr)
       .orderBy(monthExpr);
 
-    return rows;
+    return rows.map((row) => ({
+      month: row.month,
+      totalIncome: Number(row.totalIncome),
+      totalExpense: Number(row.totalExpense),
+    }));
   }
 }

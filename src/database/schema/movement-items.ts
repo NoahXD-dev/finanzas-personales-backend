@@ -1,10 +1,4 @@
-import {
-  doublePrecision,
-  index,
-  integer,
-  pgTable,
-  text,
-} from 'drizzle-orm/pg-core';
+import { decimal, index, integer, pgTable, text } from 'drizzle-orm/pg-core';
 import { movements } from './movements.js';
 
 export const movementItems = pgTable(
@@ -15,7 +9,7 @@ export const movementItems = pgTable(
       .notNull()
       .references(() => movements.id),
     name: text('name').notNull(),
-    price: doublePrecision('price').notNull(),
+    price: decimal('price', { precision: 19, scale: 4, mode: 'number' }).notNull(),
     subcategory: text('subcategory').notNull(),
     position: integer('position').notNull(),
   },

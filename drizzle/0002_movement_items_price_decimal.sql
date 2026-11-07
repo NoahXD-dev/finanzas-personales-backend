@@ -1,0 +1,1 @@
+ALTER TABLE "movement_items" ALTER COLUMN "price" SET DATA TYPE numeric(19, 4);
