@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, isNull, sql } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { DRIZZLE } from './database.constants.js';
 import type { DrizzleDB } from './drizzle-db.type.js';
@@ -13,8 +13,14 @@ export class DatabaseBootstrapService implements OnModuleInit {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
   async onModuleInit(): Promise<void> {
+    await this.verifyConnection();
     const superUser = await this.ensureSuperUser();
     await this.backfillMovementOwners(superUser.id);
+  }
+
+  private async verifyConnection(): Promise<void> {
+    await this.db.execute(sql`SELECT 1`);
+    this.logger.log('Conexión con PostgreSQL establecida');
   }
 
   private async ensureSuperUser(): Promise<typeof users.$inferSelect> {
